@@ -1,0 +1,36 @@
+server {
+    listen 80;
+    server_name app.local.incrivel.pt;
+    charset utf-8;
+    sendfile off;
+    client_max_body_size 100m;
+
+    add_header X-Frame-Options "ALLOW-FROM https://*.incrivel.pt";
+    add_header Content-Security-Policy "frame-ancestors 'self' https://*.incrivel.pt";
+
+    # this is the internal Docker DNS, cache only for 30s
+    resolver 127.0.0.11 valid=30s;
+
+    location / {
+        root "/var/www/incrivel-app";
+        try_files $uri @incrivel-app;
+    }
+
+    location @incrivel-app {
+        set $upstream http://incrivel-app:3002;
+        proxy_pass $upstream;
+        access_log off;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_hide_header X-Frame-Options;
+    }
+
+    # Catch all other to a 404 error page
+    error_page 404 /404.html;
+
+    error_log /var/log/nginx/incrivel-app_error.log;
+    access_log /var/log/nginx/incrivel-app_access.log;
+}
